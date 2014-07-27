@@ -297,7 +297,9 @@ get_group_stats( const uint32_t group_id, group_stats **stats, uint32_t *n_group
   if ( group_id != OFPG_ALL ) {
     group_entry *entry = lookup_group_entry( group_id );
     if ( entry == NULL ) {
-      unlock_pipeline();
+      if ( !unlock_pipeline() ) {
+        return ERROR_UNLOCK;
+      }
       return ERROR_OFDPE_BAD_REQUEST_BAD_TABLE_ID;
     }
     append_to_tail( &groups, entry );
@@ -469,6 +471,21 @@ decrement_reference_count( const uint32_t group_id ) {
 
   if ( !unlock_pipeline() ) {
     error( "Failed to unlock pipeline." );
+  }
+}
+
+
+void
+dump_group_table( void dump_function( const char *format, ... ) ) {
+  assert( table != NULL );
+  assert( dump_function != NULL );
+
+  for ( list_element *element = table->entries; element != NULL; element = element->next ) {
+    if ( element->data == NULL ) {
+      continue;
+    }
+    group_entry *entry = element->data;
+    dump_group_entry( entry, dump_function );
   }
 }
 

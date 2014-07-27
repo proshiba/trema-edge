@@ -25,6 +25,7 @@
 #include "ofdp.h"
 #include "action-helper.h"
 #include "group-helper.h"
+#include "meter-helper.h"
 #include "instruction-helper.h"
 #include "oxm-helper.h"
 #include "parse-options.h"
@@ -44,22 +45,28 @@ bool mock_switch_send_openflow_message( buffer *message );
 
 
 static void
-_handle_hello( const uint32_t transaction_id, const uint8_t version, const buffer *version_data, void *user_data ) {
-  UNUSED( user_data );
+_handle_hello( const uint32_t transaction_id, const uint8_t version, const buffer *elements, void *user_data ) {
+  UNUSED( elements );
+
+  assert( user_data != NULL );
+
+  struct protocol *protocol = user_data;
+
   debug( "Hello received ( transaction_id = %#x, version = %#x ).", transaction_id, version );
 
-  struct ofp_hello_elem_versionbitmap *versionbitmap = ( struct ofp_hello_elem_versionbitmap * ) version_data->data;
-  const uint32_t ofp_versions[ 1 ] = { OFP_VERSION };
-  
-  uint32_t bitmap = versionbitmap->bitmaps[ 0 ];
-  if ( ( bitmap & ( ( uint32_t ) 1 << ofp_versions[ 0 ] ) ) != ( ( uint32_t ) ofp_versions[ 0 ] ) ) {
-    buffer *hello_buf = create_hello_elem_versionbitmap( transaction_id, ofp_versions,
-      sizeof( ofp_versions ) / sizeof( ofp_versions[ 0 ] ) );
-    switch_send_openflow_message( hello_buf );
-    free_buffer( hello_buf );
-  } else {
-    send_error_message( transaction_id, OFPET_HELLO_FAILED, OFPHFC_INCOMPATIBLE );
+  uint8_t supported_versions[ 1 ] = { OFP_VERSION };
+  buffer *element = create_hello_elem_versionbitmap( supported_versions, sizeof( supported_versions ) / sizeof( supported_versions[ 0 ] ) );
+  buffer *buf = create_hello( transaction_id, element );
+  free_buffer( element );
+  bool ret = switch_send_openflow_message( buf );
+  if ( ret ) {
+    switch_features features;
+    memset( &features, 0, sizeof( switch_features ) );
+    get_switch_features( &features );
+    protocol->ctrl.controller_connected = true;
+    protocol->ctrl.capabilities = features.capabilities;
   }
+  free_buffer( buf );
 }
 void ( *handle_hello )( const uint32_t transaction_id,
         const uint8_t version,
@@ -69,8 +76,7 @@ void ( *handle_hello )( const uint32_t transaction_id,
 
 static void
 _handle_features_request( const uint32_t transaction_id, void *user_data ) {
-  assert( user_data );
-  struct protocol *protocol = user_data;
+  UNUSED( user_data );
 
   switch_features features;
   memset( &features, 0, sizeof( switch_features ) );
@@ -81,13 +87,7 @@ _handle_features_request( const uint32_t transaction_id, void *user_data ) {
    */
   buffer *features_reply = create_features_reply( transaction_id, features.datapath_id, features.n_buffers,
                                                   features.n_tables, features.auxiliary_id, features.capabilities );
-  if ( switch_send_openflow_message( features_reply ) ) {
-    protocol->ctrl.controller_connected = true;
-    /*
-     * save datapath's capabilities
-     */
-    protocol->ctrl.capabilities = features.capabilities;
-  }
+  switch_send_openflow_message( features_reply );
   free_buffer( features_reply );
 }
 void ( *handle_features_request )( const uint32_t transaction_id, void *user_data ) = _handle_features_request;
@@ -539,6 +539,32 @@ void ( *handle_group_mod )( const uint32_t transaction_id, const uint16_t comman
 
 
 static void
+_handle_meter_mod( const uint32_t transaction_id,
+        const uint16_t command,
+        const uint16_t flags,
+        const uint32_t meter_id,
+        const list_element *bands,
+        void *user_data ) {
+  UNUSED( user_data );
+  switch( command ) {
+    case OFPMC_ADD:
+      handle_meter_mod_add( transaction_id, flags, meter_id, bands );
+    break;
+    case OFPMC_MODIFY:
+      handle_meter_mod_mod( transaction_id, flags, meter_id, bands );
+    break;
+    case OFPMC_DELETE:
+      handle_meter_mod_delete( transaction_id, meter_id );
+    break;
+    default:
+      send_error_message( transaction_id, OFPET_METER_MOD_FAILED, OFPMMFC_BAD_COMMAND );
+    break;
+  }
+}
+void ( *handle_meter_mod)( const uint32_t transaction_id, const uint16_t command, const uint16_t flags, const uint32_t meter_id, const list_element *bands, void *user_data ) = _handle_meter_mod;
+
+
+static void
 shrink_array( struct outstanding_request outstanding_requests[], int pos ) {
   memset( &outstanding_requests[ pos ], 0, sizeof( struct outstanding_request ) );
 
@@ -576,6 +602,7 @@ save_outstanding_request( struct protocol_ctrl *ctrl, const uint32_t transaction
      */
     if ( ctrl->nr_requests < MAX_OUTSTANDING_REQUESTS ) {
       if ( ( flags & OFPMPF_REQ_MORE ) == OFPMPF_REQ_MORE ) {
+        i = MAX_OUTSTANDING_REQUESTS - 1; // overwrite the last one
         ctrl->outstanding_requests[ i ].transaction_id = transaction_id;
         ctrl->outstanding_requests[ i ].type = type;
         ctrl->outstanding_requests[ i ].flags = flags;

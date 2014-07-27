@@ -28,6 +28,7 @@
 #include "messages.h"
 #include "message-handler.h"
 #include "message-helper.h"
+#include "tasks.h"
 
 
 VALUE mTrema;
@@ -48,6 +49,7 @@ Init_trema( void ) {
   Init_message_handler();
   Init_message_helper();
   Init_match();
+  Init_tasks();
   rb_require( "trema/exact-match" );  
 }
 

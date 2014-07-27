@@ -78,8 +78,7 @@ bool init_openflow_message( void );
 
 // Functions for creating OpenFlow messages
 buffer *create_hello( const uint32_t transaction_id, const buffer *elements );
-buffer *create_hello_elem_versionbitmap( const uint32_t transaction_id,
-                                         const uint32_t ofp_versions[], const uint16_t nr_versions );
+buffer *create_hello_elem_versionbitmap( const uint8_t *ofp_versions, const uint16_t n_versions );
 buffer *create_error( const uint32_t transaction_id, const uint16_t type,
                       const uint16_t code, const buffer *data );
 buffer *create_error_experimenter( const uint32_t transaction_id, const uint16_t type,
@@ -161,36 +160,46 @@ buffer *create_desc_multipart_reply( const uint32_t transaction_id, const uint16
                                      const char serial_num[ SERIAL_NUM_LEN ],
                                      const char dp_desc[ DESC_STR_LEN ] );
 buffer *create_flow_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                     const list_element *flow_multipart_head );
+                                     const list_element *flow_multipart_head,
+                                     int *more, int *offset );
 buffer *create_aggregate_multipart_reply( const uint32_t transaction_id,
                                           const uint16_t flags,
                                           const uint64_t packet_count, const uint64_t byte_count,
                                           const uint32_t flow_count );
 buffer *create_table_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                      const list_element *table_multipart_head );
+                                      const list_element *table_multipart_head,
+                                      int *more, int *offset );
 buffer *create_port_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                     const list_element *port_multipart_head );
+                                     const list_element *port_multipart_head,
+                                     int *more, int *offset );
 buffer *create_queue_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                      const list_element *queue_multipart_head );
+                                      const list_element *queue_multipart_head,
+                                      int *more, int *offset );
 buffer *create_group_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                      const list_element *group_multipart_head );
+                                      const list_element *group_multipart_head,
+                                      int *more, int *offset );
 buffer *create_group_desc_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                           const list_element *group_desc_multipart_head );
+                                           const list_element *group_desc_multipart_head,
+                                           int *more, int *offset );
 buffer *create_group_features_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
                                                const uint32_t types, const uint32_t capabilities,
                                                const uint32_t max_groups[ 4 ], const uint32_t actions[ 4 ] );
 buffer *create_meter_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                      const list_element *meter_multipart_head );
+                                      const list_element *meter_multipart_head,
+                                      int *more, int *offset );
 buffer *create_meter_config_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                             const list_element *meter_config_multipart_head );
+                                             const list_element *meter_config_multipart_head,
+                                             int *more, int *offset );
 buffer *create_meter_features_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
                                                const uint32_t max_meter, const uint32_t band_types,
                                                const uint32_t capabilities, const uint8_t max_bands,
                                                const uint8_t max_color );
 buffer *create_table_features_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                               const list_element *table_features_multipart_head );
+                                               const list_element *table_features_multipart_head,
+                                               int *more, int *offset );
 buffer *create_port_desc_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
-                                          const list_element *port_desc_multipart_head  );
+                                          const list_element *port_desc_multipart_head,
+                                          int *more, int *offset );
 buffer *create_experimenter_multipart_reply( const uint32_t transaction_id, const uint16_t flags,
                                              const uint32_t experimenter, const uint32_t exp_type, const buffer *body );
 buffer *create_barrier_request( const uint32_t transaction_id );
@@ -252,7 +261,7 @@ bool append_action_set_field_sctp_src( openflow_actions *actions, const uint16_t
 bool append_action_set_field_sctp_dst( openflow_actions *actions, const uint16_t sctp_dst );
 bool append_action_set_field_icmpv4_type( openflow_actions *actions, const uint8_t icmpv4_type );
 bool append_action_set_field_icmpv4_code( openflow_actions *actions, const uint8_t icmpv4_code );
-bool append_action_set_field_arp_op( openflow_actions *actions, const uint16_t arp_op );
+bool append_action_set_field_arp_op( openflow_actions *actions, const uint16_t arp_opcode );
 bool append_action_set_field_arp_spa( openflow_actions *actions, const uint32_t arp_spa );
 bool append_action_set_field_arp_tpa( openflow_actions *actions, const uint32_t arp_tpa );
 bool append_action_set_field_arp_sha( openflow_actions *actions, const uint8_t arp_sha[ OFP_ETH_ALEN ] );
@@ -291,7 +300,7 @@ bool append_bucket( openflow_buckets *buckets, uint16_t weight, uint32_t watch_p
 // Return code definitions indicating the result of OpenFlow message validation.
 enum {
   SUCCESS = 0,
-  ERROR_UNSUPPORTED_VERSION = -102,
+  ERROR_UNSUPPORTED_VERSION = -105,
   ERROR_INVALID_LENGTH,
   ERROR_TOO_SHORT_MESSAGE,
   ERROR_TOO_LONG_MESSAGE,
@@ -393,6 +402,9 @@ enum {
   ERROR_INVALID_STATS_TYPE,
   ERROR_INVALID_STATS_REQUEST_FLAGS,
   ERROR_UNDEFINED_FLOW_MOD_COMMAND,
+  ERROR_TOO_SHORT_HELLO_ELEMENT,
+  ERROR_INVALID_HELLO_ELEMENT_LENGTH,
+  ERROR_UNDEFINED_HELLO_ELEMENT_TYPE,
   ERROR_UNEXPECTED_ERROR = -255
 };
 

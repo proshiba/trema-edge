@@ -1,19 +1,19 @@
 source "https://rubygems.org"
 
 
-gem "gli", "~> 2.5.5"
-gem "paper-house", "~> 0.1.13"
+gem "gli", "~> 2.11.0"
+gem "paper_house", "~> 0.6.2"
 
 
 group :development do
-  gem "aruba", "~> 0.5.1"
-  gem "coveralls", require: false
-  gem "cucumber", "~> 1.2.5"
-  gem "flay", "~> 2.1.0"
-  gem "flog", "~> 3.2.2"
-  gem "reek", "~> 1.3.1"
-  gem "rspec", "~> 2.13.0"
-  gem "yard", "~> 0.8.5.2"
+  gem "aruba", "~> 0.6.0"
+  gem "coveralls", "~> 0.7.0", require: false
+  gem "cucumber", "~> 1.3.15"
+  gem "flay", "~> 2.5.0"
+  gem "flog", "~> 4.2.1"
+  gem "reek", "~> 1.3.7"
+  gem "rspec", "~> 3.0.0"
+  gem "yard", "~> 0.8.7.4"
 end
 
 

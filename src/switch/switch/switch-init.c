@@ -91,10 +91,20 @@ init_parse_args( int argc, char **argv ) {
   parse_options( args, argc, argv );
 
   char *switch_log = get_switch_log();
-  logging_type log_output_type = LOGGING_TYPE_FILE;
-  if ( args->run_as_daemon == false ) {
-    log_output_type |= LOGGING_TYPE_STDOUT;
+  logging_type log_output_type = 0;
+
+  if ( args->log_type == LOGGING_TYPE_UNSET ) {
+    log_output_type = LOGGING_TYPE_FILE;
+    if ( args->run_as_daemon == false ) {
+      log_output_type |= LOGGING_TYPE_STDOUT;
+    }
+  } else {
+    log_output_type = args->log_type;
   }
+  if ( args->run_as_daemon == true ) {
+    log_output_type &= ~LOGGING_TYPE_STDOUT;
+  }
+
   char name[ PATH_MAX ];
   snprintf( name, PATH_MAX, "%s.%#" PRIx64, args->progname, args->datapath_id );
   init_log( name, switch_log, log_output_type );
@@ -115,11 +125,9 @@ init_parse_args( int argc, char **argv ) {
   assert( args->to_protocol_queue != NULL );
 
   ignore_sigpipe();
-#ifdef NOT_TESTED
   if ( args->run_as_daemon == true ) {
     daemonize( get_switch_home() );
   }
-#endif
 
   char *switch_pid_dir = get_switch_pid_dir();
   write_pid( switch_pid_dir, name );

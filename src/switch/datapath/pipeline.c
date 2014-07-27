@@ -17,6 +17,7 @@
 
 
 #include "action_executor.h"
+#include "meter_executor.h"
 #include "async_event_notifier.h"
 #include "flow_table.h"
 #include "pipeline.h"
@@ -49,8 +50,10 @@ apply_instructions( const uint8_t table_id, const instruction_set *instructions,
 
   OFDPE ret = OFDPE_SUCCESS;
   if ( instructions->meter != NULL ) {
-    warn( "OFPIT_METER is not supported." );
-    ret = OFDPE_FAILED;
+    ret = execute_meter( instructions->meter->meter_id, frame );
+    if ( ret != OFDPE_SUCCESS && ret != ERROR_DROP_PACKET ) {
+      error( "Failed to apply meter ( ret = %d ).", ret );
+    }
   }
   if ( ret == OFDPE_SUCCESS && instructions->apply_actions != NULL ) {
     ret = execute_action_list( instructions->apply_actions->actions, frame );
@@ -96,7 +99,7 @@ process_received_frame( const switch_port *port, buffer *frame ) {
   assert( frame != NULL );
   assert( frame->user_data != NULL );
 
-  action_set set;
+  action_set set = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   clear_action_set( &set );
 
   bool completed = false;
@@ -118,11 +121,14 @@ process_received_frame( const switch_port *port, buffer *frame ) {
 
     entry->packet_count++;
     entry->byte_count += frame->length;
+    time_now( &( entry->last_seen ) );
 
     uint8_t next_table_id = FLOW_TABLE_ALL;
     ret = apply_instructions( table_id, entry->instructions, frame, &set, &next_table_id );
     if ( ret != OFDPE_SUCCESS ) {
-      error( "Failed to apply instructions ( ret = %d ).", ret );
+      if ( ret != ERROR_DROP_PACKET ) {
+        error( "Failed to apply instructions ( ret = %d ).", ret );
+      }
       break;
     }
 
@@ -140,6 +146,7 @@ process_received_frame( const switch_port *port, buffer *frame ) {
       error( "Failed to execute action set ( set = %p, frame = %p ).", &set, frame );
     }
   }
+  clear_action_set( &set );
 }
 
 

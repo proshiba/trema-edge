@@ -106,21 +106,27 @@ send_packet_out( int argc, VALUE *argv, VALUE self ) {
     }
 
     VALUE r_opt_message = HASH_REF( options, packet_in );
+    VALUE r_opt_data = HASH_REF( options, data ); //add
     if ( !NIL_P( r_opt_message ) ) {
-
-      if ( datapath_id == rb_iv_get( r_opt_message, "@datapath_id" ) ) {
+      VALUE message_buffer_id = rb_iv_get( r_opt_message, "@buffer_id" );
+      if (!NIL_P( message_buffer_id ) ) {
         buffer_id = NUM2UINT( rb_iv_get( r_opt_message, "@buffer_id" ) );
-        VALUE match = rb_iv_get( r_opt_message, "@match" );
+      }
+      VALUE message_in_port = rb_iv_get( r_opt_message, "@in_port" );
+      if (!NIL_P( message_in_port ) ) {
         in_port = NUM2UINT( rb_iv_get( match, "@in_port" ) );
       }
-       
+
       VALUE r_data = rb_iv_get( r_opt_message, "@data" );
       data = r_array_to_buffer( r_data );
     }
-
+    else if( !NIL_P(r_opt_data) ){
+        data = r_array_to_buffer( r_opt_data );
+    }
 
     buffer *packet_out;
-    if ( buffer_id == OFP_NO_BUFFER && !NIL_P( r_opt_message ) ) {
+    if ( buffer_id == OFP_NO_BUFFER &&
+       ( !NIL_P( r_opt_message )  || !NIL_P(r_opt_data) )) {
       buffer *frame = duplicate_buffer( data );
       fill_ether_padding( frame );
 

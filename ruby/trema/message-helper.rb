@@ -24,6 +24,15 @@ module Trema
       send_flow_mod datapath_id, options
     end
 
+    def send_flow_mod_delete datapath_id, options
+      options[ :command ]      = OFPFC_DELETE
+      options[ :table_id ]     = OFPTT_ALL if options[ :table_id ].nil?
+      options[ :cookie ]       = 0         if options[ :cookie ].nil?
+      options[ :cookie_mask ]  = 0         if options[ :cookie_mask ].nil?
+      options[ :out_port ]     = OFPP_ANY  if options[ :out_port ].nil?
+      options[ :out_group ]    = OFPG_ANY  if options[ :out_group ].nil?
+      send_flow_mod datapath_id, options
+    end
 
     def send_group_mod_add datapath_id, options
       options[ :command ] = OFPGC_ADD

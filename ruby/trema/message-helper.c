@@ -108,11 +108,11 @@ send_packet_out( int argc, VALUE *argv, VALUE self ) {
     if ( !NIL_P( r_opt_message ) ) {
       VALUE message_buffer_id = rb_iv_get( r_opt_message, "@buffer_id" );
       if (!NIL_P( message_buffer_id ) ) {
-        buffer_id = NUM2UINT( rb_iv_get( r_opt_message, "@buffer_id" ) );
+        buffer_id = NUM2UINT( message_buffer_id );
       }
       VALUE message_in_port = rb_iv_get( r_opt_message, "@in_port" );
       if (!NIL_P( message_in_port ) ) {
-        in_port = NUM2UINT( rb_iv_get( match, "@in_port" ) );
+        in_port = NUM2UINT( message_in_port );
       }
 
       VALUE r_data = rb_iv_get( r_opt_message, "@data" );
